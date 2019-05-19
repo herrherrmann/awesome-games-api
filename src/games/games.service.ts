@@ -86,7 +86,7 @@ export class GamesService {
     return games;
   }
 
-  pickBestResult(igdbResults: IGDB_Game[], game: Game): IGDB_Game {
+  private pickBestResult(igdbResults: IGDB_Game[], game: Game): IGDB_Game {
     const exactMatch = igdbResults.find(
       igdbResult => igdbResult.name.toLowerCase() === game.name.toLowerCase(),
     );
@@ -96,7 +96,7 @@ export class GamesService {
     return igdbResults[0];
   }
 
-  mergeGames(igdbGame: IGDB_Game, game: Game, genres: Genres): Game {
+  private mergeGames(igdbGame: IGDB_Game, game: Game, genres: Genres): Game {
     return {
       id: igdbGame.id,
       name: igdbGame.name,
