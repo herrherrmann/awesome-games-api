@@ -5,13 +5,15 @@ import Game from '../interfaces/game';
 import { SuggestGameDTO } from './dto/SuggestGameDTO.dto';
 import { IGDB_Game } from 'src/interfaces/igdb';
 
+type IGDB_Genre = { id: number; name: string };
+type Genres = { [id: number]: string };
+
 @Injectable()
 export class GamesService {
-  private gameCache: { [id: string]: Game };
+  private gameCache: { [id: number]: Game };
+  private genreCache: Genres;
   private suggestions = [];
   private igdbClient: AxiosInstance;
-  private IGDB_FIELDS =
-    'category,cover,first_release_date,genres,multiplayer_modes,name,platforms,popularity,rating,slug,summary,total_rating,url,websites';
 
   constructor() {
     this.igdbClient = axios.create({
@@ -24,18 +26,39 @@ export class GamesService {
   }
 
   async getGames(): Promise<Game[]> {
+    const genres = await this.getGenresFromIGDB();
     const githubGames = await this.getGamesFromGitHub();
     const promises = githubGames.map(game => this.getGamesFromIGDB(game.name));
     const searchResultsPerGame = await Promise.all(promises);
     return githubGames.map((game: Game, index: number) => {
       const searchResults = searchResultsPerGame[index];
-      const bestResult = this.getBestResult(searchResults, game);
-      console.log('bestResult: ', bestResult);
+      const bestResult = this.pickBestResult(searchResults, game);
       if (!bestResult) {
         return game;
       }
-      return this.mergeGames(bestResult, game);
+      return this.mergeGames(bestResult, game, genres);
     });
+  }
+
+  async getGenresFromIGDB(): Promise<Genres> {
+    if (this.genreCache) {
+      return this.genreCache;
+    }
+    const searchQuery = `
+      fields *;
+      limit: 50;
+    `;
+    const response = await this.igdbClient.post('genres', searchQuery);
+    const rawGenres: IGDB_Genre[] = response.data;
+    const genres: Genres = rawGenres.reduce(
+      (allGenres: Genres, rawGenre: IGDB_Genre) => {
+        allGenres[Number(rawGenre.id)] = rawGenre.name;
+        return allGenres;
+      },
+      {},
+    );
+    this.genreCache = genres;
+    return genres;
   }
 
   async getGamesFromIGDB(search?: string): Promise<IGDB_Game[]> {
@@ -50,7 +73,7 @@ export class GamesService {
     return games;
   }
 
-  getBestResult(igdbResults: IGDB_Game[], game: Game): IGDB_Game {
+  pickBestResult(igdbResults: IGDB_Game[], game: Game): IGDB_Game {
     const exactMatch = igdbResults.find(
       igdbResult => igdbResult.name.toLowerCase() === game.name.toLowerCase(),
     );
@@ -60,16 +83,18 @@ export class GamesService {
     return igdbResults[0];
   }
 
-  mergeGames(igdbGame: IGDB_Game, game: Game): Game {
+  mergeGames(igdbGame: IGDB_Game, game: Game, genres: Genres): Game {
     return {
       id: igdbGame.id,
       name: igdbGame.name,
       description: igdbGame.summary,
       links: game.links,
-      genres: [],
+      genres: igdbGame.genres.map(
+        (genre: number) => genres[genre] || genres[genre.toString()],
+      ),
       isFree: game.isFree,
       releaseYear: igdbGame.first_release_date
-        ? new Date(igdbGame.first_release_date).getFullYear()
+        ? new Date(igdbGame.first_release_date * 1000).getFullYear()
         : null,
       rating: igdbGame.total_rating,
     };
