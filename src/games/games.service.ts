@@ -7,10 +7,11 @@ import { IGDB_Game } from 'src/interfaces/igdb';
 
 type IGDB_Genre = { id: number; name: string };
 type Genres = { [id: number]: string };
+type Games = { [search: string]: IGDB_Game[] };
 
 @Injectable()
 export class GamesService {
-  private gameCache: { [id: number]: Game };
+  private gameCache: Games = {};
   private genreCache: Genres;
   private suggestions = [];
   private igdbClient: AxiosInstance;
@@ -48,6 +49,7 @@ export class GamesService {
       fields *;
       limit: 50;
     `;
+    console.info('Requesting genres from IGDB.');
     const response = await this.igdbClient.post('genres', searchQuery);
     const rawGenres: IGDB_Genre[] = response.data;
     const genres: Genres = rawGenres.reduce(
@@ -62,6 +64,9 @@ export class GamesService {
   }
 
   async getGamesFromIGDB(search?: string): Promise<IGDB_Game[]> {
+    if (search && this.gameCache[search]) {
+      return Promise.resolve(this.gameCache[search]);
+    }
     const MAIN_GAME_CATEGORY = 0;
     const searchQuery = `
       ${search ? `search "${search}";` : ''}
@@ -70,6 +75,14 @@ export class GamesService {
     `;
     const response = await this.igdbClient.post('games', searchQuery);
     const games: IGDB_Game[] = response.data;
+    console.info(
+      `Requesting games from IGDB:`,
+      search ? `"${search}"` : '',
+      `=> ${games.length} result(s)`,
+    );
+    if (search) {
+      this.gameCache[search] = games;
+    }
     return games;
   }
 
