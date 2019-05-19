@@ -21,11 +21,6 @@ export class GamesController {
     return await this.gamesService.getGamesFromGitHub();
   }
 
-  @Get(':gameId')
-  async getGame(@Param('gameId') gameId) {
-    return await this.gamesService.getGame(gameId);
-  }
-
   @Post()
   async suggest(@Body() suggestGameDTO: SuggestGameDTO) {
     return await this.gamesService.suggest(suggestGameDTO);

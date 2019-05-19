@@ -1,13 +1,17 @@
-import { HttpException, Injectable, HttpStatus } from '@nestjs/common';
+import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import axios, { AxiosInstance } from 'axios';
 import { IGDB_API, IGDB_API_KEY } from '../common/config';
-import { GAMES } from '../mocks/games.mock';
+import Game from '../interfaces/game';
+import { SuggestGameDTO } from './dto/SuggestGameDTO.dto';
+import { IGDB_Game } from 'src/interfaces/igdb';
 
 @Injectable()
 export class GamesService {
-  private games = GAMES;
+  private gameCache: { [id: string]: Game };
   private suggestions = [];
   private igdbClient: AxiosInstance;
+  private IGDB_FIELDS =
+    'category,cover,first_release_date,genres,multiplayer_modes,name,platforms,popularity,rating,slug,summary,total_rating,url,websites';
 
   constructor() {
     this.igdbClient = axios.create({
@@ -19,39 +23,104 @@ export class GamesService {
     });
   }
 
-  getGames(): Promise<any> {
-    return new Promise(resolve => {
-      resolve(this.games);
+  async getGames(): Promise<Game[]> {
+    const githubGames = await this.getGamesFromGitHub();
+    const promises = githubGames.map(game => this.getGamesFromIGDB(game.name));
+    const searchResultsPerGame = await Promise.all(promises);
+    return githubGames.map((game: Game, index: number) => {
+      const searchResults = searchResultsPerGame[index];
+      const bestResult = this.getBestResult(searchResults, game);
+      console.log('bestResult: ', bestResult);
+      if (!bestResult) {
+        return game;
+      }
+      return this.mergeGames(bestResult, game);
     });
   }
 
-  async getGamesFromIGDB(): Promise<any> {
-    const response = await this.igdbClient.post(
-      'games',
-      'fields age_ratings,aggregated_rating,aggregated_rating_count,alternative_names,artworks,bundles,category,collection,cover,created_at,dlcs,expansions,external_games,first_release_date,follows,franchise,franchises,game_engines,game_modes,genres,hypes,involved_companies,keywords,multiplayer_modes,name,parent_game,platforms,player_perspectives,popularity,pulse_count,rating,rating_count,release_dates,screenshots,similar_games,slug,standalone_expansions,status,storyline,summary,tags,themes,time_to_beat,total_rating,total_rating_count,updated_at,url,version_parent,version_title,videos,websites;',
-    );
-    return response.data;
+  async getGamesFromIGDB(search?: string): Promise<IGDB_Game[]> {
+    const MAIN_GAME_CATEGORY = 0;
+    const searchQuery = `
+      ${search ? `search "${search}";` : ''}
+      fields *;
+      where category=${MAIN_GAME_CATEGORY};
+    `;
+    const response = await this.igdbClient.post('games', searchQuery);
+    const games: IGDB_Game[] = response.data;
+    return games;
   }
 
-  async getGamesFromGitHub(): Promise<any> {
+  getBestResult(igdbResults: IGDB_Game[], game: Game): IGDB_Game {
+    const exactMatch = igdbResults.find(
+      igdbResult => igdbResult.name.toLowerCase() === game.name.toLowerCase(),
+    );
+    if (exactMatch) {
+      return exactMatch;
+    }
+    return igdbResults[0];
+  }
+
+  mergeGames(igdbGame: IGDB_Game, game: Game): Game {
+    return {
+      id: igdbGame.id,
+      name: igdbGame.name,
+      description: igdbGame.summary,
+      links: game.links,
+      genres: [],
+      isFree: game.isFree,
+      releaseYear: igdbGame.first_release_date
+        ? new Date(igdbGame.first_release_date).getFullYear()
+        : null,
+      rating: igdbGame.total_rating,
+    };
+  }
+
+  async getGamesFromGitHub(): Promise<Game[]> {
     const readmeUrl =
       'https://raw.githubusercontent.com/herrherrmann/awesome-lan-party-games/master/readme.md';
     const response = await axios.get(readmeUrl);
-    return response.data;
+    const GAME_PREFIX = '- ';
+    const games: Game[] = response.data
+      .split('\n')
+      .map((line: string) => line.trim())
+      .filter((line: string) => line.startsWith(GAME_PREFIX))
+      .map((line: string, index: number) =>
+        this.parseMarkdownLine(line.slice(GAME_PREFIX.length), index),
+      );
+    // TODO: Remove limit.
+    return games.slice(0, 5);
   }
 
-  getGame(gameId): Promise<any> {
-    const id = gameId;
-    return new Promise(resolve => {
-      const game = this.games.find(game => game.id === id);
-      if (!game) {
-        throw new HttpException('Game does not exist!', HttpStatus.NOT_FOUND);
-      }
-      resolve(game);
-    });
+  private parseMarkdownLine(markdownLine: string, customId: number): Game {
+    let name = markdownLine;
+    const links = {};
+    let isFree: boolean = false;
+    const LINK_REGEX = /(\[.+\])(.+)/;
+    const removeBrackets = (str: string) => str.slice(1, -1);
+    if (markdownLine.startsWith('[')) {
+      const [, parsedGameName, parsedLinkUrl] = LINK_REGEX.exec(markdownLine);
+      name = removeBrackets(parsedGameName);
+      const linkUrl = removeBrackets(parsedLinkUrl);
+      const key = linkUrl.includes('steampowered.com') ? 'steam' : 'website';
+      links[key] = linkUrl;
+    }
+    if (name.endsWith('*')) {
+      name = name.slice(0, -1);
+      isFree = true;
+    }
+    return {
+      id: customId,
+      name,
+      description: '',
+      links,
+      genres: [],
+      isFree,
+      releaseYear: null,
+      rating: null,
+    };
   }
 
-  suggest(game): Promise<any> {
+  suggest(game: SuggestGameDTO): Promise<SuggestGameDTO[]> {
     return new Promise(resolve => {
       this.suggestions.push(game);
       resolve(this.suggestions);

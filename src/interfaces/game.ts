@@ -1,12 +1,14 @@
-interface Link {
-  type: 'STEAM';
-  name: string;
-  url: string;
-}
-
 export default interface Game {
-  id: string;
+  id: number;
   name: string;
-  officialWebsiteUrl: string;
-  links: Link[];
+  description: string;
+  genres: string[];
+  releaseYear: number | null;
+  rating: number;
+  isFree: boolean;
+  links: {
+    website?: string;
+    igdb?: string;
+    steam?: string;
+  };
 }
