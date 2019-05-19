@@ -7,14 +7,20 @@ export class GamesController {
   constructor(private gamesService: GamesService) {}
 
   @Get()
-  async getBooks() {
-    const games = await this.gamesService.getBooks();
+  async getGames() {
+    const games = await this.gamesService.getGames();
+    return games;
+  }
+
+  @Get('from-igdb')
+  async getGamesFromIGDB() {
+    const games = await this.gamesService.getGamesFromIGDB();
     return games;
   }
 
   @Get(':gameId')
   async getGame(@Param('gameId') gameId) {
-    const game = await this.gamesService.getBook(gameId);
+    const game = await this.gamesService.getGame(gameId);
     return game;
   }
 
