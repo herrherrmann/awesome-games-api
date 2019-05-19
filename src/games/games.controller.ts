@@ -8,25 +8,26 @@ export class GamesController {
 
   @Get()
   async getGames() {
-    const games = await this.gamesService.getGames();
-    return games;
+    return await this.gamesService.getGames();
   }
 
-  @Get('from-igdb')
+  @Get('/from-igdb')
   async getGamesFromIGDB() {
-    const games = await this.gamesService.getGamesFromIGDB();
-    return games;
+    return await this.gamesService.getGamesFromIGDB();
+  }
+
+  @Get('/from-github')
+  async getGamesFromGitHub() {
+    return await this.gamesService.getGamesFromGitHub();
   }
 
   @Get(':gameId')
   async getGame(@Param('gameId') gameId) {
-    const game = await this.gamesService.getGame(gameId);
-    return game;
+    return await this.gamesService.getGame(gameId);
   }
 
   @Post()
   async suggest(@Body() suggestGameDTO: SuggestGameDTO) {
-    const addedSuggestion = await this.gamesService.suggest(suggestGameDTO);
-    return addedSuggestion;
+    return await this.gamesService.suggest(suggestGameDTO);
   }
 }
