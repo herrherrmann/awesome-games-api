@@ -1,9 +1,9 @@
-import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import axios, { AxiosInstance } from 'axios';
+import { IGDB_Game } from 'src/interfaces/igdb';
 import { IGDB_API, IGDB_API_KEY } from '../common/config';
 import Game from '../interfaces/game';
 import { SuggestGameDTO } from './dto/SuggestGameDTO.dto';
-import { IGDB_Game } from 'src/interfaces/igdb';
 
 type IGDB_Genre = { id: number; name: string };
 type Genres = { [id: number]: string };
