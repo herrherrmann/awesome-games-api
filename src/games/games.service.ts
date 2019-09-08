@@ -43,13 +43,14 @@ export class GamesService {
 
   async getGenresFromIGDB(): Promise<Genres> {
     if (this.genreCache) {
+      console.info('🗄  Serving genres from cache.');
       return this.genreCache;
     }
     const searchQuery = `
       fields *;
       limit: 50;
     `;
-    console.info('Requesting genres from IGDB.');
+    console.info('📥 Requesting genres from IGDB.');
     const response = await this.igdbClient.post('genres', searchQuery);
     const rawGenres: IGDB_Genre[] = response.data;
     const genres: Genres = rawGenres.reduce(
@@ -65,6 +66,7 @@ export class GamesService {
 
   async getGamesFromIGDB(search?: string): Promise<IGDB_Game[]> {
     if (search && this.gameCache[search]) {
+      console.info(`🗄  Serving "${search}" from cache.`);
       return Promise.resolve(this.gameCache[search]);
     }
     const MAIN_GAME_CATEGORY = 0;
@@ -76,7 +78,7 @@ export class GamesService {
     const response = await this.igdbClient.post('games', searchQuery);
     const games: IGDB_Game[] = response.data;
     console.info(
-      `Requesting games from IGDB:`,
+      `📥 Requesting from IGDB:`,
       search ? `"${search}"` : '',
       `=> ${games.length} result(s)`,
     );
@@ -114,6 +116,7 @@ export class GamesService {
   }
 
   async getGamesFromGitHub(): Promise<Game[]> {
+    console.info('🐱 Requesting GitHub README.');
     const readmeUrl =
       'https://raw.githubusercontent.com/herrherrmann/awesome-lan-party-games/master/readme.md';
     const response = await axios.get(readmeUrl);
