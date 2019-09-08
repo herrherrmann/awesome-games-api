@@ -1,9 +1,12 @@
 import { Injectable } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
 import axios, { AxiosInstance } from 'axios';
+import { differenceWith } from 'ramda';
 import { IGDB_Game } from 'src/interfaces/igdb';
+import { Repository } from 'typeorm';
 import { IGDB_API, IGDB_API_KEY } from '../common/config';
-import Game from '../interfaces/game';
 import { SuggestGameDTO } from './dto/SuggestGameDTO.dto';
+import { Game } from './entities/game.entity';
 
 type IGDB_Genre = { id: number; name: string };
 type Genres = { [id: number]: string };
@@ -16,7 +19,9 @@ export class GamesService {
   private suggestions = [];
   private igdbClient: AxiosInstance;
 
-  constructor() {
+  constructor(
+    @InjectRepository(Game) private readonly gameRepository: Repository<Game>,
+  ) {
     this.igdbClient = axios.create({
       baseURL: IGDB_API + '/',
       headers: {
@@ -30,15 +35,17 @@ export class GamesService {
     const genres = await this.getGenresFromIGDB();
     const githubGames = await this.getGamesFromGitHub();
     const promises = githubGames.map(game => this.getGamesFromIGDB(game.name));
-    const searchResultsPerGame = await Promise.all(promises);
-    return githubGames.map((game: Game, index: number) => {
-      const searchResults = searchResultsPerGame[index];
+    const igdbResultsPerGame = await Promise.all(promises);
+    const games = githubGames.map((game: Game, index: number) => {
+      const searchResults = igdbResultsPerGame[index];
       const bestResult = this.pickBestResult(searchResults, game);
       if (!bestResult) {
         return game;
       }
       return this.mergeGames(bestResult, game, genres);
     });
+    this.updateGamesInDatabase(games);
+    return games;
   }
 
   async getGenresFromIGDB(): Promise<Genres> {
@@ -46,11 +53,11 @@ export class GamesService {
       console.info('🗄  Serving genres from cache.');
       return this.genreCache;
     }
+    console.info('📥 Requesting genres from IGDB.');
     const searchQuery = `
       fields *;
       limit: 50;
     `;
-    console.info('📥 Requesting genres from IGDB.');
     const response = await this.igdbClient.post('genres', searchQuery);
     const rawGenres: IGDB_Genre[] = response.data;
     const genres: Genres = rawGenres.reduce(
@@ -104,9 +111,11 @@ export class GamesService {
       name: igdbGame.name,
       description: igdbGame.summary,
       links: game.links,
-      genres: igdbGame.genres.map(
-        (genre: number) => genres[genre] || genres[genre.toString()],
-      ),
+      genres: igdbGame.genres
+        ? igdbGame.genres.map(
+            (genre: number) => genres[genre] || genres[genre.toString()],
+          )
+        : [],
       isFree: game.isFree,
       releaseYear: igdbGame.first_release_date
         ? new Date(igdbGame.first_release_date * 1000).getFullYear()
@@ -129,7 +138,22 @@ export class GamesService {
         this.parseMarkdownLine(line.slice(GAME_PREFIX.length), index),
       );
     // TODO: Remove limit.
-    return games.slice(0, 5);
+    // return games.slice(0, 5);
+    return games;
+  }
+
+  private async updateGamesInDatabase(games: Game[]) {
+    const ids: number[] = games.map(game => game.id);
+    const existingGames = await this.gameRepository.findByIds(ids);
+    const newGames = differenceWith(
+      (gameA, gameB) => gameA.id === gameB.id,
+      games,
+      existingGames,
+    );
+    if (newGames.length) {
+      console.info(`🔒 Storing ${newGames.length} new games.`);
+      this.gameRepository.save(newGames);
+    }
   }
 
   private parseMarkdownLine(markdownLine: string, customId: number): Game {
