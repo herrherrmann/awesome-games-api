@@ -32,20 +32,28 @@ export class GamesService {
   }
 
   async getGames(): Promise<Game[]> {
-    const genres = await this.getGenresFromIGDB();
-    const githubGames = await this.getGamesFromGitHub();
-    const promises = githubGames.map(game => this.getGamesFromIGDB(game.name));
-    const igdbResultsPerGame = await Promise.all(promises);
-    const games = githubGames.map((game: Game, index: number) => {
-      const searchResults = igdbResultsPerGame[index];
-      const bestResult = this.pickBestResult(searchResults, game);
-      if (!bestResult) {
-        return game;
-      }
-      return this.mergeGames(bestResult, game, genres);
-    });
-    this.updateGamesInDatabase(games);
-    return games;
+    const gamesInDatabase = await this.getAllGamesInDatabase();
+    let githubGames;
+    try {
+      githubGames = await this.getGamesFromGitHub();
+    } catch {
+      // Fallback to direct DB access if GitHub lookup doesn't work.
+      console.info(
+        `💥 GitHub lookup failed. Serving ${gamesInDatabase.length} games straight from the database.`,
+      );
+      return gamesInDatabase;
+    }
+    const hasUpdated = await this.updateGamesInDatabase(
+      githubGames,
+      gamesInDatabase,
+    );
+    if (hasUpdated) {
+      return this.getAllGamesInDatabase();
+    }
+    console.log(
+      `🕹 Serving ${gamesInDatabase.length} games straight from the database.`,
+    );
+    return gamesInDatabase;
   }
 
   async getGenresFromIGDB(): Promise<Genres> {
@@ -105,18 +113,24 @@ export class GamesService {
     return igdbResults[0];
   }
 
-  private mergeGames(igdbGame: IGDB_Game, game: Game, genres: Genres): Game {
+  private mergeGames(
+    igdbGame: IGDB_Game,
+    githubGame: Game,
+    genres: Genres,
+  ): Game {
     return {
       id: igdbGame.id,
+      igdbId: igdbGame.id,
       name: igdbGame.name,
+      originalName: githubGame.name,
       description: igdbGame.summary,
-      links: game.links,
+      links: githubGame.links,
       genres: igdbGame.genres
         ? igdbGame.genres.map(
             (genre: number) => genres[genre] || genres[genre.toString()],
           )
         : [],
-      isFree: game.isFree,
+      isFree: githubGame.isFree,
       releaseYear: igdbGame.first_release_date
         ? new Date(igdbGame.first_release_date * 1000).getFullYear()
         : null,
@@ -135,37 +149,59 @@ export class GamesService {
       .map((line: string) => line.trim())
       .filter((line: string) => line.startsWith(GAME_PREFIX))
       .map((line: string, index: number) =>
-        this.parseMarkdownLine(line.slice(GAME_PREFIX.length), index),
+        this.markdownLineToGame(line.slice(GAME_PREFIX.length), index),
       );
-    // TODO: Remove limit.
-    // return games.slice(0, 5);
     return games;
   }
 
-  private async updateGamesInDatabase(games: Game[]) {
-    const ids: number[] = games.map(game => game.id);
-    const existingGames = await this.gameRepository.findByIds(ids);
-    const newGames = differenceWith(
-      (gameA, gameB) => gameA.id === gameB.id,
-      games,
-      existingGames,
-    );
-    if (newGames.length) {
-      console.info(`🔒 Storing ${newGames.length} new games.`);
-      this.gameRepository.save(newGames);
-    }
+  private async getAllGamesInDatabase() {
+    return this.gameRepository.find();
   }
 
-  private parseMarkdownLine(markdownLine: string, customId: number): Game {
+  private async updateGamesInDatabase(
+    githubGames: Game[],
+    gamesInDatabase: Game[],
+  ): Promise<boolean> {
+    const newGames = differenceWith(
+      (githubGame, gameInDb) => githubGame.name === gameInDb.originalName,
+      githubGames,
+      gamesInDatabase,
+    );
+    if (newGames.length) {
+      console.info(`✨ ${newGames.length} new games detected.`);
+      const genres = await this.getGenresFromIGDB();
+      const promises = githubGames.map(game =>
+        this.getGamesFromIGDB(game.name),
+      );
+      const igdbResultsPerGame = await Promise.all(promises);
+      const newGamesMerged = githubGames.map(
+        (githubGame: Game, index: number) => {
+          const searchResults = igdbResultsPerGame[index];
+          const bestResult = this.pickBestResult(searchResults, githubGame);
+          if (!bestResult) {
+            return githubGame;
+          }
+          return this.mergeGames(bestResult, githubGame, genres);
+        },
+      );
+      console.info(`🔒 Storing ${newGamesMerged.length} new games.`);
+      await this.gameRepository.save(newGamesMerged);
+    }
+    // TODO: Also remove games that are deleted now.
+    return !!newGames.length;
+  }
+
+  private markdownLineToGame(markdownLine: string, customId: number): Game {
     let name = markdownLine;
     const links = {};
     let isFree: boolean = false;
     const LINK_REGEX = /(\[.+\])(.+)/;
     const removeBrackets = (str: string) => str.slice(1, -1);
-    if (markdownLine.startsWith('[')) {
-      const [, parsedGameName, parsedLinkUrl] = LINK_REGEX.exec(markdownLine);
-      name = removeBrackets(parsedGameName);
-      const linkUrl = removeBrackets(parsedLinkUrl);
+    const hasLink = markdownLine.startsWith('[');
+    if (hasLink) {
+      const [, parsedName, parsedUrl] = LINK_REGEX.exec(markdownLine);
+      name = removeBrackets(parsedName);
+      const linkUrl = removeBrackets(parsedUrl);
       const key = linkUrl.includes('steampowered.com') ? 'steam' : 'website';
       links[key] = linkUrl;
     }
@@ -175,7 +211,9 @@ export class GamesService {
     }
     return {
       id: customId,
+      igdbId: null,
       name,
+      originalName: name,
       description: '',
       links,
       genres: [],

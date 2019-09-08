@@ -5,11 +5,20 @@ export class Game {
   @PrimaryGeneratedColumn()
   id: number;
 
+  @Column('integer', { nullable: true })
+  igdbId: number | null;
+
   @Column({ length: 500 })
   name: string;
 
+  /**
+   * The original name from the GitHub readme
+   */
+  @Column({ length: 500 })
+  originalName: string;
+
   @Column('text', { nullable: true })
-  description: string;
+  description: string | null;
 
   @Column('simple-array')
   genres: string[];
@@ -18,7 +27,7 @@ export class Game {
   releaseYear: number | null;
 
   @Column('numeric', { nullable: true })
-  rating: number;
+  rating: number | null;
 
   @Column('boolean')
   isFree: boolean;
