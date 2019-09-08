@@ -10,7 +10,7 @@ export class GamesController {
     return await this.gamesService.getGames();
   }
 
-  @Get('/from-github')
+  @Get('/github')
   async getGamesFromGitHub() {
     return await this.gamesService.getGamesFromGitHub();
   }
