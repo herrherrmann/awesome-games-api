@@ -11,7 +11,6 @@ import { GamesModule } from './games/games.module';
       ...DB_CONFIG,
       entities: [__dirname + '/**/*.entity{.ts,.js}'],
       synchronize: true,
-      // ssl: true,
       extra: {
         ssl: true,
       },
