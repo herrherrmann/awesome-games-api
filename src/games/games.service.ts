@@ -142,14 +142,14 @@ export class GamesService {
       'https://raw.githubusercontent.com/herrherrmann/awesome-lan-party-games/master/readme.md';
     const response = await axios.get(readmeUrl);
     const GAME_PREFIX = '- ';
-    const games: Game[] = response.data
+    const githubGames: Game[] = response.data
       .split('\n')
       .map((line: string) => line.trim())
       .filter((line: string) => line.startsWith(GAME_PREFIX))
       .map((line: string, index: number) =>
         this.markdownLineToGame(line.slice(GAME_PREFIX.length), index),
       );
-    return games;
+    return githubGames;
   }
 
   private async getAllGamesInDatabase() {
@@ -185,8 +185,16 @@ export class GamesService {
       console.info(`🔒 Storing ${newGamesMerged.length} new games.`);
       await this.gameRepository.save(newGamesMerged);
     }
-    // TODO: Also remove games that are deleted now.
-    return !!newGames.length;
+    const removedGames = differenceWith(
+      (gameInDb, githubGame) => githubGame.name === gameInDb.originalName,
+      gamesInDatabase,
+      githubGames,
+    );
+    if (removedGames.length) {
+      console.info(`✨ ${removedGames.length} removed games detected.`);
+      this.gameRepository.remove(removedGames);
+    }
+    return !!newGames.length || !!removedGames.length;
   }
 
   private markdownLineToGame(markdownLine: string, customId: number): Game {
