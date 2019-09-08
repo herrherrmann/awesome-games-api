@@ -168,20 +168,16 @@ export class GamesService {
     if (newGames.length) {
       console.info(`✨ ${newGames.length} new games detected.`);
       const genres = await this.getGenresFromIGDB();
-      const promises = githubGames.map(game =>
-        this.getGamesFromIGDB(game.name),
-      );
+      const promises = newGames.map(game => this.getGamesFromIGDB(game.name));
       const igdbResultsPerGame = await Promise.all(promises);
-      const newGamesMerged = githubGames.map(
-        (githubGame: Game, index: number) => {
-          const searchResults = igdbResultsPerGame[index];
-          const bestResult = this.pickBestResult(searchResults, githubGame);
-          if (!bestResult) {
-            return githubGame;
-          }
-          return this.mergeGames(bestResult, githubGame, genres);
-        },
-      );
+      const newGamesMerged = newGames.map((githubGame: Game, index: number) => {
+        const searchResults = igdbResultsPerGame[index];
+        const bestResult = this.pickBestResult(searchResults, githubGame);
+        if (!bestResult) {
+          return githubGame;
+        }
+        return this.mergeGames(bestResult, githubGame, genres);
+      });
       console.info(`🔒 Storing ${newGamesMerged.length} new games.`);
       await this.gameRepository.save(newGamesMerged);
     }
