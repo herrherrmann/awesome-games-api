@@ -1,13 +1,9 @@
 import { TypeOrmModuleOptions } from '@nestjs/typeorm';
 
 export const IGDB_API: string = 'https://api-v3.igdb.com';
-export const IGDB_API_KEY: string = 'REPLACE_ME';
+export const IGDB_API_KEY: string = process.env.IGDB_API_KEY;
 export const GITHUB_API: string = 'https://api.github.com';
 export const DB_CONFIG: TypeOrmModuleOptions = {
   type: 'postgres',
-  host: '',
-  port: 1234,
-  database: '',
-  username: '',
-  password: '',
+  url: process.env.DATABASE_URL,
 };
