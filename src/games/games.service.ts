@@ -5,7 +5,6 @@ import { differenceWith } from 'ramda';
 import { IGDB_Game } from 'src/interfaces/igdb';
 import { Repository } from 'typeorm';
 import { IGDB_API, IGDB_API_KEY } from '../common/config';
-import { SuggestGameDTO } from './dto/SuggestGameDTO.dto';
 import { Game } from './entities/game.entity';
 
 type IGDB_Genre = { id: number; name: string };
@@ -16,7 +15,6 @@ type Games = { [search: string]: IGDB_Game[] };
 export class GamesService {
   private gameCache: Games = {};
   private genreCache: Genres;
-  private suggestions = [];
   private igdbClient: AxiosInstance;
 
   constructor(
@@ -221,12 +219,5 @@ export class GamesService {
       releaseYear: null,
       rating: null,
     };
-  }
-
-  suggest(game: SuggestGameDTO): Promise<SuggestGameDTO[]> {
-    return new Promise(resolve => {
-      this.suggestions.push(game);
-      resolve(this.suggestions);
-    });
   }
 }

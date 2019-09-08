@@ -1,5 +1,4 @@
-import { Body, Controller, Get, Param, Post } from '@nestjs/common';
-import { SuggestGameDTO } from './dto/SuggestGameDTO.dto';
+import { Controller, Get } from '@nestjs/common';
 import { GamesService } from './games.service';
 
 @Controller('games')
@@ -19,10 +18,5 @@ export class GamesController {
   @Get('/from-github')
   async getGamesFromGitHub() {
     return await this.gamesService.getGamesFromGitHub();
-  }
-
-  @Post()
-  async suggest(@Body() suggestGameDTO: SuggestGameDTO) {
-    return await this.gamesService.suggest(suggestGameDTO);
   }
 }
