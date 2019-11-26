@@ -9,7 +9,7 @@ export class Game {
   igdbId: number | null;
 
   @Column('text', { nullable: true })
-  igdbSlug: string | null;
+  igdbUrl: string | null;
 
   @Column({ length: 500 })
   name: string;
