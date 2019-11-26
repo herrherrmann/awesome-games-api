@@ -119,6 +119,7 @@ export class GamesService {
     return {
       id: igdbGame.id,
       igdbId: igdbGame.id,
+      igdbSlug: igdbGame.slug,
       name: igdbGame.name,
       originalName: githubGame.name,
       description: igdbGame.summary,
@@ -214,6 +215,7 @@ export class GamesService {
     return {
       id: customId,
       igdbId: null,
+      igdbSlug: null,
       name,
       originalName: name,
       description: '',
