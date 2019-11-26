@@ -124,9 +124,9 @@ export class GamesService {
       description: igdbGame.summary,
       links: { ...githubGame.links, igdb: igdbGame.url },
       genres: igdbGame.genres
-        ? igdbGame.genres.map(
-            (genre: number) => genres[genre] || genres[genre.toString()],
-          )
+        ? igdbGame.genres
+            .map((genre: number) => genres[genre] || genres[genre.toString()])
+            .sort()
         : [],
       isFree: githubGame.isFree,
       releaseYear: igdbGame.first_release_date
