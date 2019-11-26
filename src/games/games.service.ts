@@ -119,11 +119,10 @@ export class GamesService {
     return {
       id: igdbGame.id,
       igdbId: igdbGame.id,
-      igdbUrl: igdbGame.url,
       name: igdbGame.name,
       originalName: githubGame.name,
       description: igdbGame.summary,
-      links: githubGame.links,
+      links: { ...githubGame.links, igdb: igdbGame.url },
       genres: igdbGame.genres
         ? igdbGame.genres.map(
             (genre: number) => genres[genre] || genres[genre.toString()],
@@ -215,7 +214,6 @@ export class GamesService {
     return {
       id: customId,
       igdbId: null,
-      igdbUrl: null,
       name,
       originalName: name,
       description: '',

@@ -8,9 +8,6 @@ export class Game {
   @Column('integer', { nullable: true })
   igdbId: number | null;
 
-  @Column('text', { nullable: true })
-  igdbUrl: string | null;
-
   @Column({ length: 500 })
   name: string;
 
