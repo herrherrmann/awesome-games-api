@@ -60,7 +60,6 @@ export class GamesService {
     }
     console.info('📥 Requesting covers from IGDB.');
     const searchQuery = `fields *; where game=(${gameIds.join(',')});`;
-    console.log('-- searchQuery: ', searchQuery);
     const response = await this.igdbClient.post('covers', searchQuery);
     const rawCovers: IGDB_Cover[] = response.data;
     const covers: CoversMap = rawCovers.reduce(
