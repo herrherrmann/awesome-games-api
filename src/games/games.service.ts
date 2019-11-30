@@ -84,7 +84,7 @@ export class GamesService {
     const rawCovers: IGDB_Cover[] = response.data;
     const covers: CoversMap = rawCovers.reduce(
       (genreMap: CoversMap, rawCover: IGDB_Cover) => {
-        genreMap[rawCover.id] = rawCover;
+        genreMap[rawCover.game] = rawCover;
         return genreMap;
       },
       {},
