@@ -55,7 +55,6 @@ export class GamesService {
   }
 
   async getCoversFromIGDB(gameIds: Game['id'][]): Promise<CoversMap> {
-    console.log('-- gameIds: ', gameIds);
     if (!gameIds.length) {
       return {};
     }
@@ -162,9 +161,10 @@ export class GamesService {
       releaseYear: igdbGame.first_release_date
         ? new Date(igdbGame.first_release_date * 1000).getFullYear()
         : null,
-      coverUrl: covers[igdbGame.id]
-        ? this.igdbCoverToUrl(covers[igdbGame.id])
-        : null,
+      coverUrl:
+        igdbGame && covers[igdbGame.id]
+          ? this.igdbCoverToUrl(covers[igdbGame.id])
+          : null,
       rating: igdbGame.total_rating,
     };
   }
@@ -203,24 +203,26 @@ export class GamesService {
       const genres = await this.getGenresFromIGDB();
       const promises = newGames.map(game => this.getGamesFromIGDB(game.name));
       const igdbResultsPerGame = await Promise.all(promises);
-      const bestResults: ({
-        bestResult: IGDB_Game | null;
+      const gameWithIGDBResults: {
         githubGame: Game;
-      })[] = newGames.map((githubGame: Game, index: number) => {
+        igdbGame: IGDB_Game | null;
+      }[] = newGames.map((githubGame: Game, index: number) => {
         // TODO: Move this rather into getGamesFromIGDB().
         const searchResults = igdbResultsPerGame[index];
         return {
-          bestResult: this.pickBestOrFirstResult(searchResults, githubGame),
           githubGame,
+          igdbGame: this.pickBestOrFirstResult(searchResults, githubGame),
         };
       });
-      const covers = await this.getCoversFromIGDB(
-        bestResults
-          .filter(({ bestResult }) => bestResult && bestResult.id)
-          .map(({ bestResult }) => bestResult.id),
-      );
-      const newGamesMerged = bestResults.map(({ bestResult, githubGame }) =>
-        this.mergeGames(bestResult, githubGame, genres, covers),
+      const igdbIds = gameWithIGDBResults
+        .filter(({ igdbGame }) => igdbGame)
+        .map(({ igdbGame }) => igdbGame.id);
+      const covers = await this.getCoversFromIGDB(igdbIds);
+      const newGamesMerged = gameWithIGDBResults.map(
+        ({ igdbGame, githubGame }) =>
+          igdbGame
+            ? this.mergeGames(igdbGame, githubGame, genres, covers)
+            : githubGame,
       );
       console.info(`🔒 Storing ${newGamesMerged.length} new games.`);
       await this.gameRepository.save(newGamesMerged);
