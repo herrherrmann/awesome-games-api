@@ -7,8 +7,8 @@ import { Repository } from 'typeorm';
 import { IGDB_API, IGDB_API_KEY } from '../common/config';
 import { Game } from './entities/game.entity';
 
-type GenresMap = Record<IGDB_Genre['id'], IGDB_Genre['name']>;
-type CoversMap = Record<IGDB_Cover['id'], IGDB_Cover>;
+type GenresMap = { [genreId in IGDB_Genre['id']]: IGDB_Genre['name'] };
+type CoversMap = { [gameId in IGDB_Game['id']]: IGDB_Cover };
 type GamesMap = { [search: string]: IGDB_Game[] };
 
 @Injectable()
