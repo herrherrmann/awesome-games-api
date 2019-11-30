@@ -1,35 +1,15 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import axios, { AxiosInstance } from 'axios';
-import { differenceWith, indexBy } from 'ramda';
-import { IGDB_Game } from 'src/interfaces/igdb';
+import { differenceWith } from 'ramda';
+import { IGDB_Cover, IGDB_Game, IGDB_Genre } from 'src/interfaces/igdb';
 import { Repository } from 'typeorm';
 import { IGDB_API, IGDB_API_KEY } from '../common/config';
 import { Game } from './entities/game.entity';
 
-type IGDB_Genre = { id: number; name: string };
-type IGDB_Cover = {
-  id: number;
-  alpha_channel: boolean;
-  animated: boolean;
-  game: number;
-  height: number;
-  image_id: string;
-  url: string;
-  width: number;
-};
-type CoversMap = Record<IGDB_Cover['id'], IGDB_Cover>;
 type GenresMap = Record<IGDB_Genre['id'], IGDB_Genre['name']>;
+type CoversMap = Record<IGDB_Cover['id'], IGDB_Cover>;
 type GamesMap = { [search: string]: IGDB_Game[] };
-
-type EntityWithId = {
-  id: string | number;
-};
-const toIdMap = <T extends EntityWithId>(list: T[]): { [key in T['id']]?: T } =>
-  list.reduce((results, item) => {
-    results[item.id] = item;
-    return results;
-  }, {});
 
 @Injectable()
 export class GamesService {

@@ -41,3 +41,19 @@ export interface IGDB_Game {
   url: string;
   websites: number[];
 }
+
+export interface IGDB_Genre {
+  id: number;
+  name: string;
+}
+
+export interface IGDB_Cover {
+  id: number;
+  alpha_channel: boolean;
+  animated: boolean;
+  game: number;
+  height: number;
+  image_id: string;
+  url: string;
+  width: number;
+}
