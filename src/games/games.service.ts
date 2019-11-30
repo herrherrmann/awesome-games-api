@@ -55,8 +55,9 @@ export class GamesService {
   }
 
   async getCoversFromIGDB(gameIds: Game['id'][]): Promise<CoversMap> {
+    console.log('-- gameIds: ', gameIds);
     if (!gameIds.length) {
-      return [];
+      return {};
     }
     console.info('📥 Requesting covers from IGDB.');
     const searchQuery = `fields *; where game=(${gameIds.join(',')});`;
@@ -126,14 +127,17 @@ export class GamesService {
     return games;
   }
 
-  private pickBestResult(igdbResults: IGDB_Game[], game: Game): IGDB_Game {
+  private pickBestOrFirstResult(
+    igdbResults: IGDB_Game[],
+    game: Game,
+  ): IGDB_Game | null {
     const exactMatch = igdbResults.find(
       igdbResult => igdbResult.name.toLowerCase() === game.name.toLowerCase(),
     );
     if (exactMatch) {
       return exactMatch;
     }
-    return igdbResults[0];
+    return igdbResults[0] || null;
   }
 
   private mergeGames(
@@ -206,13 +210,13 @@ export class GamesService {
         // TODO: Move this rather into getGamesFromIGDB().
         const searchResults = igdbResultsPerGame[index];
         return {
-          bestResult: this.pickBestResult(searchResults, githubGame),
+          bestResult: this.pickBestOrFirstResult(searchResults, githubGame),
           githubGame,
         };
       });
       const covers = await this.getCoversFromIGDB(
         bestResults
-          .filter(({ bestResult }) => !!bestResult)
+          .filter(({ bestResult }) => bestResult && bestResult.id)
           .map(({ bestResult }) => bestResult.id),
       );
       const newGamesMerged = bestResults.map(({ bestResult, githubGame }) =>
