@@ -1,20 +1,40 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import axios, { AxiosInstance } from 'axios';
-import { differenceWith } from 'ramda';
+import { differenceWith, indexBy } from 'ramda';
 import { IGDB_Game } from 'src/interfaces/igdb';
 import { Repository } from 'typeorm';
 import { IGDB_API, IGDB_API_KEY } from '../common/config';
 import { Game } from './entities/game.entity';
 
 type IGDB_Genre = { id: number; name: string };
-type Genres = { [id: number]: string };
-type Games = { [search: string]: IGDB_Game[] };
+type IGDB_Cover = {
+  id: number;
+  alpha_channel: boolean;
+  animated: boolean;
+  game: number;
+  height: number;
+  image_id: string;
+  url: string;
+  width: number;
+};
+type CoversMap = Record<IGDB_Cover['id'], IGDB_Cover>;
+type GenresMap = Record<IGDB_Genre['id'], IGDB_Genre['name']>;
+type GamesMap = { [search: string]: IGDB_Game[] };
+
+type EntityWithId = {
+  id: string | number;
+};
+const toIdMap = <T extends EntityWithId>(list: T[]): { [key in T['id']]?: T } =>
+  list.reduce((results, item) => {
+    results[item.id] = item;
+    return results;
+  }, {});
 
 @Injectable()
 export class GamesService {
-  private gameCache: Games = {};
-  private genreCache: Genres;
+  private gameCache: GamesMap = {};
+  private genreCache: GenresMap;
   private igdbClient: AxiosInstance;
 
   constructor(
@@ -54,7 +74,32 @@ export class GamesService {
     return gamesInDatabase;
   }
 
-  async getGenresFromIGDB(): Promise<Genres> {
+  async getCoversFromIGDB(gameIds: Game['id'][]): Promise<CoversMap> {
+    if (!gameIds.length) {
+      return [];
+    }
+    console.info('📥 Requesting covers from IGDB.');
+    const searchQuery = `fields *; where game=(${gameIds.join(',')});`;
+    const response = await this.igdbClient.post('covers', searchQuery);
+    const rawCovers: IGDB_Cover[] = response.data;
+    const covers: CoversMap = rawCovers.reduce(
+      (genreMap: CoversMap, rawCover: IGDB_Cover) => {
+        genreMap[rawCover.id] = rawCover;
+        return genreMap;
+      },
+      {},
+    );
+    return covers;
+  }
+
+  /**
+   * igdbCover.url is something like "//images.igdb.com/igdb/image/upload/t_thumb/co1ntq.jpg"
+   */
+  igdbCoverToUrl(igdbCover: IGDB_Cover): string {
+    return 'https://' + igdbCover.url.substring(2);
+  }
+
+  async getGenresFromIGDB(): Promise<GenresMap> {
     if (this.genreCache) {
       console.info('🗄  Serving genres from cache.');
       return this.genreCache;
@@ -66,10 +111,10 @@ export class GamesService {
     `;
     const response = await this.igdbClient.post('genres', searchQuery);
     const rawGenres: IGDB_Genre[] = response.data;
-    const genres: Genres = rawGenres.reduce(
-      (allGenres: Genres, rawGenre: IGDB_Genre) => {
-        allGenres[Number(rawGenre.id)] = rawGenre.name;
-        return allGenres;
+    const genres: GenresMap = rawGenres.reduce(
+      (genreMap: GenresMap, rawGenre: IGDB_Genre) => {
+        genreMap[Number(rawGenre.id)] = rawGenre.name;
+        return genreMap;
       },
       {},
     );
@@ -114,7 +159,8 @@ export class GamesService {
   private mergeGames(
     igdbGame: IGDB_Game,
     githubGame: Game,
-    genres: Genres,
+    genres: GenresMap,
+    covers: CoversMap,
   ): Game {
     return {
       id: igdbGame.id,
@@ -131,6 +177,9 @@ export class GamesService {
       isFree: githubGame.isFree,
       releaseYear: igdbGame.first_release_date
         ? new Date(igdbGame.first_release_date * 1000).getFullYear()
+        : null,
+      coverUrl: covers[igdbGame.id]
+        ? this.igdbCoverToUrl(covers[igdbGame.id])
         : null,
       rating: igdbGame.total_rating,
     };
@@ -168,6 +217,9 @@ export class GamesService {
     if (newGames.length) {
       console.info(`✨ ${newGames.length} new games detected.`);
       const genres = await this.getGenresFromIGDB();
+      const covers = await this.getCoversFromIGDB(
+        newGames.map(game => game.id),
+      );
       const promises = newGames.map(game => this.getGamesFromIGDB(game.name));
       const igdbResultsPerGame = await Promise.all(promises);
       const newGamesMerged = newGames.map((githubGame: Game, index: number) => {
@@ -176,7 +228,7 @@ export class GamesService {
         if (!bestResult) {
           return githubGame;
         }
-        return this.mergeGames(bestResult, githubGame, genres);
+        return this.mergeGames(bestResult, githubGame, genres, covers);
       });
       console.info(`🔒 Storing ${newGamesMerged.length} new games.`);
       await this.gameRepository.save(newGamesMerged);
@@ -221,6 +273,7 @@ export class GamesService {
       genres: [],
       isFree,
       releaseYear: null,
+      coverUrl: null,
       rating: null,
     };
   }

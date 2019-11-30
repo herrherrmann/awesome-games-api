@@ -26,6 +26,9 @@ export class Game {
   @Column('integer', { nullable: true })
   releaseYear: number | null;
 
+  @Column('text', { nullable: true })
+  coverUrl: string | null;
+
   @Column('numeric', { nullable: true })
   rating: number | null;
 
