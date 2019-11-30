@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import axios, { AxiosInstance } from 'axios';
-import { differenceWith, filter } from 'ramda';
+import { differenceWith } from 'ramda';
 import { IGDB_Cover, IGDB_Game, IGDB_Genre } from 'src/interfaces/igdb';
 import { Repository } from 'typeorm';
 import { IGDB_API, IGDB_API_KEY } from '../common/config';
@@ -211,9 +211,9 @@ export class GamesService {
         };
       });
       const covers = await this.getCoversFromIGDB(
-        filter<number>(Boolean)(
-          bestResults.map(({ bestResult }) => bestResult.id),
-        ),
+        bestResults
+          .filter(({ bestResult }) => !!bestResult)
+          .map(({ bestResult }) => bestResult.id),
       );
       const newGamesMerged = bestResults.map(({ bestResult, githubGame }) =>
         this.mergeGames(bestResult, githubGame, genres, covers),
