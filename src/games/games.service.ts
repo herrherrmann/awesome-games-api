@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import axios, { AxiosInstance } from 'axios';
-import { differenceWith } from 'ramda';
+import { differenceWith, filter } from 'ramda';
 import { IGDB_Cover, IGDB_Game, IGDB_Genre } from 'src/interfaces/igdb';
 import { Repository } from 'typeorm';
 import { IGDB_API, IGDB_API_KEY } from '../common/config';
@@ -60,7 +60,7 @@ export class GamesService {
     }
     console.info('📥 Requesting covers from IGDB.');
     const searchQuery = `fields *; where game=(${gameIds.join(',')});`;
-    console.log('searchQuery: ', searchQuery);
+    console.log('-- searchQuery: ', searchQuery);
     const response = await this.igdbClient.post('covers', searchQuery);
     const rawCovers: IGDB_Cover[] = response.data;
     const covers: CoversMap = rawCovers.reduce(
@@ -70,7 +70,6 @@ export class GamesService {
       },
       {},
     );
-    console.log('covers: ', covers);
     return covers;
   }
 
@@ -199,19 +198,27 @@ export class GamesService {
     if (newGames.length) {
       console.info(`✨ ${newGames.length} new games detected.`);
       const genres = await this.getGenresFromIGDB();
-      const covers = await this.getCoversFromIGDB(
-        newGames.map(game => game.id),
-      );
       const promises = newGames.map(game => this.getGamesFromIGDB(game.name));
       const igdbResultsPerGame = await Promise.all(promises);
-      const newGamesMerged = newGames.map((githubGame: Game, index: number) => {
+      const bestResults: ({
+        bestResult: IGDB_Game | null;
+        githubGame: Game;
+      })[] = newGames.map((githubGame: Game, index: number) => {
+        // TODO: Move this rather into getGamesFromIGDB().
         const searchResults = igdbResultsPerGame[index];
-        const bestResult = this.pickBestResult(searchResults, githubGame);
-        if (!bestResult) {
-          return githubGame;
-        }
-        return this.mergeGames(bestResult, githubGame, genres, covers);
+        return {
+          bestResult: this.pickBestResult(searchResults, githubGame),
+          githubGame,
+        };
       });
+      const covers = await this.getCoversFromIGDB(
+        filter<number>(Boolean)(
+          bestResults.map(({ bestResult }) => bestResult.id),
+        ),
+      );
+      const newGamesMerged = bestResults.map(({ bestResult, githubGame }) =>
+        this.mergeGames(bestResult, githubGame, genres, covers),
+      );
       console.info(`🔒 Storing ${newGamesMerged.length} new games.`);
       await this.gameRepository.save(newGamesMerged);
     }
@@ -221,7 +228,7 @@ export class GamesService {
       githubGames,
     );
     if (removedGames.length) {
-      console.info(`✨ ${removedGames.length} removed games detected.`);
+      console.info(`🗑 ${removedGames.length} removed games detected.`);
       this.gameRepository.remove(removedGames);
     }
     return !!newGames.length || !!removedGames.length;
