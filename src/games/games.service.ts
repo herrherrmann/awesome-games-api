@@ -7,6 +7,7 @@ import { Repository } from 'typeorm';
 import { IGDB_API, IGDB_API_KEY } from '../common/config';
 import { Game } from './entities/game.entity';
 
+type GitHubGame = Pick<Game, 'name' | 'originalName' | 'links' | 'isFree'>;
 type GenresMap = { [genreId in IGDB_Genre['id']]: IGDB_Genre['name'] };
 type CoversMap = { [gameId in IGDB_Game['id']]: IGDB_Cover };
 type GamesMap = { [search: string]: IGDB_Game[] };
@@ -134,10 +135,11 @@ export class GamesService {
 
   private pickBestOrFirstResult(
     igdbResults: IGDB_Game[],
-    game: Game,
+    gitHubGame: GitHubGame,
   ): IGDB_Game | null {
     const exactMatch = igdbResults.find(
-      igdbResult => igdbResult.name.toLowerCase() === game.name.toLowerCase(),
+      igdbResult =>
+        igdbResult.name.toLowerCase() === gitHubGame.name.toLowerCase(),
     );
     if (exactMatch) {
       return exactMatch;
@@ -147,7 +149,7 @@ export class GamesService {
 
   private mergeGames(
     igdbGame: IGDB_Game,
-    githubGame: Game,
+    githubGame: GitHubGame,
     genres: GenresMap,
     covers: CoversMap,
   ): Game {
@@ -175,7 +177,7 @@ export class GamesService {
     };
   }
 
-  async getGamesFromGitHub(): Promise<Game[]> {
+  async getGamesFromGitHub(): Promise<GitHubGame[]> {
     console.info('🐱 Requesting GitHub README.');
     const readmeUrl =
       'https://raw.githubusercontent.com/herrherrmann/awesome-lan-party-games/master/readme.md';
@@ -183,10 +185,9 @@ export class GamesService {
     const GAME_PREFIX = '- ';
     const githubGames: Game[] = response.data
       .split('\n')
-      .map((line: string) => line.trim())
       .filter((line: string) => line.startsWith(GAME_PREFIX))
-      .map((line: string, index: number) =>
-        this.markdownLineToGame(line.slice(GAME_PREFIX.length), index),
+      .map((line: string) =>
+        this.markdownLineToGame(line.trim().slice(GAME_PREFIX.length)),
       );
     return githubGames;
   }
@@ -197,7 +198,7 @@ export class GamesService {
   }
 
   private async updateGamesInDatabase(
-    githubGames: Game[],
+    githubGames: GitHubGame[],
     gamesInDatabase: Game[],
   ): Promise<boolean> {
     const newGames = differenceWith(
@@ -211,9 +212,9 @@ export class GamesService {
       const promises = newGames.map(game => this.getGamesFromIGDB(game.name));
       const igdbResultsPerGame = await Promise.all(promises);
       const gameWithIGDBResults: {
-        githubGame: Game;
+        githubGame: GitHubGame;
         igdbGame: IGDB_Game | null;
-      }[] = newGames.map((githubGame: Game, index: number) => {
+      }[] = newGames.map((githubGame: GitHubGame, index: number) => {
         // TODO: Move this rather into getGamesFromIGDB().
         const searchResults = igdbResultsPerGame[index];
         return {
@@ -243,10 +244,10 @@ export class GamesService {
       console.info(`🗑 ${removedGames.length} removed games detected.`);
       this.gameRepository.remove(removedGames);
     }
-    return !!newGames.length || !!removedGames.length;
+    return !!(newGames.length || removedGames.length);
   }
 
-  private markdownLineToGame(markdownLine: string, customId: number): Game {
+  private markdownLineToGame(markdownLine: string): GitHubGame {
     let name = markdownLine;
     const links = {};
     let isFree: boolean = false;
@@ -265,17 +266,10 @@ export class GamesService {
       isFree = true;
     }
     return {
-      id: customId,
-      igdbId: null,
       name,
       originalName: name,
-      description: '',
       links,
-      genres: [],
       isFree,
-      releaseYear: null,
-      coverUrl: null,
-      rating: null,
     };
   }
 }
