@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import axios, { AxiosInstance } from 'axios';
-import { differenceWith } from 'ramda';
+import { ascend, descend, differenceWith, prop, propOr, sortWith } from 'ramda';
 import { IGDB_Cover, IGDB_Game, IGDB_Genre } from 'src/interfaces/igdb';
 import { Repository } from 'typeorm';
 import { IGDB_API, IGDB_API_KEY } from '../common/config';
@@ -10,6 +10,11 @@ import { Game } from './entities/game.entity';
 type GenresMap = { [genreId in IGDB_Genre['id']]: IGDB_Genre['name'] };
 type CoversMap = { [gameId in IGDB_Game['id']]: IGDB_Cover };
 type GamesMap = { [search: string]: IGDB_Game[] };
+
+const sortGames = sortWith<Game>([
+  ascend(prop('name')),
+  descend(propOr(0, 'releaseYear')),
+]);
 
 @Injectable()
 export class GamesService {
@@ -46,6 +51,7 @@ export class GamesService {
       gamesInDatabase,
     );
     if (hasUpdated) {
+      // Re-fetch from database, because games have changed.
       return this.getAllGamesInDatabase();
     }
     console.log(
@@ -186,7 +192,8 @@ export class GamesService {
   }
 
   private async getAllGamesInDatabase() {
-    return this.gameRepository.find();
+    const games = await this.gameRepository.find();
+    return sortGames(games);
   }
 
   private async updateGamesInDatabase(
