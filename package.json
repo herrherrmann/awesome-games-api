@@ -1,7 +1,7 @@
 {
   "name": "awesome-games-api",
-  "version": "0.0.1",
-  "description": "Backend for the upcoming Awesome Games website.",
+  "version": "1.0.0",
+  "description": "Backend for the Awesome Multiplayer Games website.",
   "author": "Sebastian Herrmann",
   "license": "UNLICENSE",
   "scripts": {
