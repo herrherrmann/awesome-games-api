@@ -180,7 +180,7 @@ export class GamesService {
   async getGamesFromGitHub(): Promise<GitHubGame[]> {
     console.info('🐱 Requesting GitHub README.');
     const readmeUrl =
-      'https://raw.githubusercontent.com/herrherrmann/awesome-lan-party-games/master/readme.md';
+      'https://raw.githubusercontent.com/herrherrmann/awesome-multiplayer-games/master/readme.md';
     const response = await axios.get(readmeUrl);
     const GAME_PREFIX = '- ';
     const githubGames: Game[] = response.data

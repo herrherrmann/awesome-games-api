@@ -1,8 +1,12 @@
 # Awesome Games API
 
-API for the upcoming awesome games website.
+API for the [awesome multiplayer games website](https://multiplayer.page).
 
-**Related:** https://github.com/herrherrmann/awesome-lan-party-games
+**Related:** https://github.com/herrherrmann/awesome-multiplayer-games
+
+# Contribute
+
+If you want to add or edit games, please go to https://github.com/herrherrmann/awesome-multiplayer-games and create a pull request.
 
 ## Installation
 
