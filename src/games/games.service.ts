@@ -8,7 +8,7 @@ import { IGDB_API, IGDB_API_KEY } from '../common/config';
 import { Game } from './entities/game.entity';
 
 type GitHubGame = Pick<Game, 'name' | 'originalName' | 'links' | 'isFree'>;
-type GenresMap = { [genreId in IGDB_Genre['id']]: IGDB_Genre['name'] };
+type GenresMap = { [genreId: string]: IGDB_Genre['name'] };
 type CoversMap = { [gameId in IGDB_Game['id']]: IGDB_Cover };
 type GamesMap = { [search: string]: IGDB_Game[] };
 
@@ -100,7 +100,7 @@ export class GamesService {
     const rawGenres: IGDB_Genre[] = response.data;
     const genres: GenresMap = rawGenres.reduce(
       (genreMap: GenresMap, rawGenre: IGDB_Genre) => {
-        genreMap[Number(rawGenre.id)] = rawGenre.name;
+        genreMap[String(rawGenre.id)] = rawGenre.name;
         return genreMap;
       },
       {},
@@ -160,11 +160,10 @@ export class GamesService {
       originalName: githubGame.name,
       description: igdbGame.summary,
       links: { ...githubGame.links, igdb: igdbGame.url },
-      genres: igdbGame.genres
-        ? igdbGame.genres
-            .map((genre: number) => genres[genre] || genres[genre.toString()])
-            .sort()
-        : [],
+      genres: (igdbGame?.genres || [])
+        .map((genre: number) => genresMap[String(genre)])
+        .filter(Boolean)
+        .sort(),
       isFree: githubGame.isFree,
       releaseYear: igdbGame.first_release_date
         ? new Date(igdbGame.first_release_date * 1000).getFullYear()
