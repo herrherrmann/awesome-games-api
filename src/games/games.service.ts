@@ -69,7 +69,7 @@ export class GamesService {
       return {};
     }
     console.info('📥 Requesting covers from IGDB.');
-    const searchQuery = `fields *; where game=(${gameIds.join(',')});`;
+    const searchQuery = `fields *; where game=(${gameIds.join(',')}); limit 100;`;
     const response = await this.igdbClient.post('covers', searchQuery);
     const rawCovers: IGDB_Cover[] = response.data;
     const covers: CoversMap = rawCovers.reduce(
@@ -97,7 +97,7 @@ export class GamesService {
     console.info('📥 Requesting genres from IGDB.');
     const searchQuery = `
       fields *;
-      limit: 50;
+      limit 50;
     `;
     const response = await this.igdbClient.post('genres', searchQuery);
     const rawGenres: IGDB_Genre[] = response.data;
