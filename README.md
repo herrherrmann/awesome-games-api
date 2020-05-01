@@ -1,6 +1,6 @@
 # Awesome Games API
 
-API for the [awesome multiplayer games website](https://multiplayer.page).
+API for the [Awesome Multiplayer Games website](https://multiplayer.page).
 
 **Related:** https://github.com/herrherrmann/awesome-multiplayer-games
 
@@ -18,7 +18,7 @@ $ npm install
 
 ```bash
 # development
-$ npm run start
+$ export DATABASE_URL=databaseurlhere && export IGDB_API_KEY=keyhere && npm run start
 
 # watch mode
 $ npm run start:dev
