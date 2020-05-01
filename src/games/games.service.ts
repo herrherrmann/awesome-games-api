@@ -7,7 +7,10 @@ import { Repository } from 'typeorm';
 import { IGDB_API, IGDB_API_KEY } from '../common/config';
 import { Game } from './entities/game.entity';
 
-type GitHubGame = Pick<Game, 'name' | 'originalName' | 'links' | 'isFree'>;
+type GitHubGame = Pick<
+  Game,
+  'name' | 'originalName' | 'type' | 'links' | 'isFree'
+>;
 type GenresMap = { [genreId: string]: IGDB_Genre['name'] };
 type CoversMap = { [gameId in IGDB_Game['id']]: IGDB_Cover };
 type GamesMap = { [search: string]: IGDB_Game[] };
@@ -148,31 +151,31 @@ export class GamesService {
   }
 
   private mergeGames(
-    igdbGame: IGDB_Game,
-    githubGame: GitHubGame,
-    genres: GenresMap,
+    genresMap: GenresMap,
     covers: CoversMap,
+    githubGame: GitHubGame,
+    igdbGame?: IGDB_Game,
   ): Game {
     return {
-      id: igdbGame.id,
-      igdbId: igdbGame.id,
-      name: igdbGame.name,
+      igdbId: igdbGame?.id,
+      name: igdbGame?.name || githubGame.name,
       originalName: githubGame.name,
-      description: igdbGame.summary,
-      links: { ...githubGame.links, igdb: igdbGame.url },
+      description: igdbGame?.summary,
+      links: { ...githubGame.links, igdb: igdbGame?.url },
+      type: githubGame.type,
       genres: (igdbGame?.genres || [])
         .map((genre: number) => genresMap[String(genre)])
         .filter(Boolean)
         .sort(),
       isFree: githubGame.isFree,
-      releaseYear: igdbGame.first_release_date
+      releaseYear: igdbGame?.first_release_date
         ? new Date(igdbGame.first_release_date * 1000).getFullYear()
         : null,
       coverUrl:
         igdbGame && covers[igdbGame.id]
           ? this.igdbCoverToUrl(covers[igdbGame.id])
           : null,
-      rating: igdbGame.total_rating,
+      rating: igdbGame?.total_rating,
     };
   }
 
@@ -180,15 +183,41 @@ export class GamesService {
     console.info('🐱 Requesting GitHub README.');
     const readmeUrl =
       'https://raw.githubusercontent.com/herrherrmann/awesome-multiplayer-games/master/readme.md';
-    const response = await axios.get(readmeUrl);
-    const GAME_PREFIX = '- ';
-    const githubGames: Game[] = response.data
-      .split('\n')
-      .filter((line: string) => line.startsWith(GAME_PREFIX))
-      .map((line: string) =>
-        this.markdownLineToGame(line.trim().slice(GAME_PREFIX.length)),
-      );
-    return githubGames;
+    const { data } = await axios.get(readmeUrl);
+    const [
+      localGamesString,
+      otherGamesString,
+    ] = this.splitIntoLocalAndGeneralMultiplayer(data);
+    const localGames: GitHubGame[] = this.markdownToGames(
+      localGamesString,
+      'local',
+    );
+    const otherGames: GitHubGame[] = this.markdownToGames(
+      otherGamesString,
+      'other',
+    );
+    return [...localGames, ...otherGames];
+  }
+
+  /**
+   * Separates the section "## local multiplayer" (1st item in array) from the rest (2nd item in array).
+   */
+  private splitIntoLocalAndGeneralMultiplayer(
+    readmeString: string,
+  ): [string, string] {
+    const localGamesMatch = readmeString.match(
+      /#+.*(local multiplayer)[\s\S]*#+/i,
+    );
+    if (!localGamesMatch) {
+      return null;
+    }
+    const localGames = localGamesMatch[0];
+    const localGamesStart = localGamesMatch.index;
+    const localGamesEnd = localGamesStart + localGames.length;
+    const otherGames =
+      readmeString.slice(0, localGamesStart) +
+      readmeString.slice(localGamesEnd);
+    return [localGames, otherGames];
   }
 
   private async getAllGamesInDatabase() {
@@ -222,14 +251,12 @@ export class GamesService {
         };
       });
       const igdbIds = gameWithIGDBResults
-        .filter(({ igdbGame }) => igdbGame)
+        .filter(({ igdbGame }) => !!igdbGame)
         .map(({ igdbGame }) => igdbGame.id);
       const covers = await this.getCoversFromIGDB(igdbIds);
       const newGamesMerged = gameWithIGDBResults.map(
-        ({ igdbGame, githubGame }) =>
-          igdbGame
-            ? this.mergeGames(igdbGame, githubGame, genres, covers)
-            : githubGame,
+        ({ githubGame, igdbGame }) =>
+          this.mergeGames(genres, covers, githubGame, igdbGame),
       );
       console.info(`🔒 Storing ${newGamesMerged.length} new games.`);
       await this.gameRepository.save(newGamesMerged);
@@ -246,7 +273,23 @@ export class GamesService {
     return !!(newGames.length || removedGames.length);
   }
 
-  private markdownLineToGame(markdownLine: string): GitHubGame {
+  private markdownToGames(
+    markdown: string,
+    type: GitHubGame['type'],
+  ): GitHubGame[] {
+    const GAME_PREFIX = '- ';
+    return markdown
+      .split('\n')
+      .filter(line => line.startsWith(GAME_PREFIX))
+      .map(line =>
+        this.markdownLineToGame(line.trim().slice(GAME_PREFIX.length), type),
+      );
+  }
+
+  private markdownLineToGame(
+    markdownLine: string,
+    type: GitHubGame['type'],
+  ): GitHubGame {
     let name = markdownLine;
     const links = {};
     let isFree: boolean = false;
@@ -267,6 +310,7 @@ export class GamesService {
     return {
       name,
       originalName: name,
+      type,
       links,
       isFree,
     };

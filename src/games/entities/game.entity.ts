@@ -3,7 +3,7 @@ import { Entity, PrimaryGeneratedColumn, Column } from 'typeorm';
 @Entity()
 export class Game {
   @PrimaryGeneratedColumn()
-  id: number;
+  id?: number;
 
   @Column('integer', { nullable: true })
   igdbId: number | null;
@@ -19,6 +19,9 @@ export class Game {
 
   @Column('text', { nullable: true })
   description: string | null;
+
+  @Column('text', { nullable: true })
+  type: 'local' | 'other' | null;
 
   @Column('simple-array')
   genres: string[];
