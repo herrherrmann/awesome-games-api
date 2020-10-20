@@ -29,7 +29,7 @@ export class AuthService {
   ) {}
 
   async getAuthHeaders(): Promise<AuthHeaders> {
-    const [existingAuth] = await this.authRepository.find();
+    const existingAuth = await this.authRepository.findOne();
     if (!this.isAuthValid(existingAuth)) {
       console.info('🔐 Getting new auth info from Twitch.');
       const requestDate = new Date();
