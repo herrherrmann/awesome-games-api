@@ -24,8 +24,6 @@ export interface IGDB_Game {
   name: string;
   platforms: number[];
   player_perspectives: number[];
-  popularity: number;
-  pulse_count: number;
   rating: number;
   rating_count: number;
   release_dates: number[];
