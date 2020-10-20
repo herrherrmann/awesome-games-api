@@ -18,7 +18,7 @@ $ npm install
 
 ```bash
 # development
-$ export DATABASE_URL=databaseurlhere && export IGDB_API_KEY=keyhere && npm run start
+$ export DATABASE_URL=databaseurlhere && export TWITCH_CLIENT_ID=keyhere && TWITCH_CLIENT_SECRET=secrethere && npm run start
 
 # watch mode
 $ npm run start:dev
