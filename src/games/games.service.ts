@@ -2,9 +2,10 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import axios, { AxiosInstance } from 'axios';
 import { ascend, descend, differenceWith, prop, propOr, sortWith } from 'ramda';
-import { IGDB_Cover, IGDB_Game, IGDB_Genre } from 'src/interfaces/igdb';
 import { Repository } from 'typeorm';
-import { IGDB_API, IGDB_API_KEY } from '../common/config';
+import { AuthService } from '../auth/auth.service';
+import { IGDB_API } from '../common/config';
+import { IGDB_Cover, IGDB_Game, IGDB_Genre } from '../interfaces/igdb';
 import { Game } from './entities/game.entity';
 
 type GitHubGame = Pick<
@@ -28,19 +29,17 @@ export class GamesService {
 
   constructor(
     @InjectRepository(Game) private readonly gameRepository: Repository<Game>,
+    private readonly authService: AuthService,
   ) {
     this.igdbClient = axios.create({
       baseURL: IGDB_API + '/',
-      headers: {
-        Accept: 'application/json',
-        'user-key': IGDB_API_KEY,
-      },
+      headers: { Accept: 'application/json' },
     });
   }
 
   async getGames(): Promise<Game[]> {
     const gamesInDatabase = await this.getAllGamesInDatabase();
-    let githubGames;
+    let githubGames: GitHubGame[];
     try {
       githubGames = await this.getGamesFromGitHub();
     } catch {
@@ -69,8 +68,12 @@ export class GamesService {
       return {};
     }
     console.info('📥 Requesting covers from IGDB.');
-    const searchQuery = `fields *; where game=(${gameIds.join(',')}); limit 100;`;
-    const response = await this.igdbClient.post('covers', searchQuery);
+    const searchQuery = `fields *; where game=(${gameIds.join(
+      ',',
+    )}); limit 100;`;
+    const response = await this.igdbClient.post('covers', searchQuery, {
+      headers: await this.authService.getAuthHeaders(),
+    });
     const rawCovers: IGDB_Cover[] = response.data;
     const covers: CoversMap = rawCovers.reduce(
       (result: CoversMap, rawCover: IGDB_Cover) => {
@@ -99,7 +102,9 @@ export class GamesService {
       fields *;
       limit 50;
     `;
-    const response = await this.igdbClient.post('genres', searchQuery);
+    const response = await this.igdbClient.post('genres', searchQuery, {
+      headers: await this.authService.getAuthHeaders(),
+    });
     const rawGenres: IGDB_Genre[] = response.data;
     const genres: GenresMap = rawGenres.reduce(
       (genreMap: GenresMap, rawGenre: IGDB_Genre) => {
@@ -123,7 +128,9 @@ export class GamesService {
       fields *;
       where category=${MAIN_GAME_CATEGORY};
     `;
-    const response = await this.igdbClient.post('games', searchQuery);
+    const response = await this.igdbClient.post('games', searchQuery, {
+      headers: await this.authService.getAuthHeaders(),
+    });
     const games: IGDB_Game[] = response.data;
     console.info(
       `📥 Requesting from IGDB:`,
@@ -141,7 +148,7 @@ export class GamesService {
     gitHubGame: GitHubGame,
   ): IGDB_Game | null {
     const exactMatch = igdbResults.find(
-      igdbResult =>
+      (igdbResult) =>
         igdbResult.name.toLowerCase() === gitHubGame.name.toLowerCase(),
     );
     if (exactMatch) {
@@ -237,7 +244,7 @@ export class GamesService {
     if (newGames.length) {
       console.info(`✨ ${newGames.length} new games detected.`);
       const genres = await this.getGenresFromIGDB();
-      const promises = newGames.map(game => this.getGamesFromIGDB(game.name));
+      const promises = newGames.map((game) => this.getGamesFromIGDB(game.name));
       const igdbResultsPerGame = await Promise.all(promises);
       const gameWithIGDBResults: {
         githubGame: GitHubGame;
@@ -280,8 +287,8 @@ export class GamesService {
     const GAME_PREFIX = '- ';
     return markdown
       .split('\n')
-      .filter(line => line.startsWith(GAME_PREFIX))
-      .map(line =>
+      .filter((line) => line.startsWith(GAME_PREFIX))
+      .map((line) =>
         this.markdownLineToGame(line.trim().slice(GAME_PREFIX.length), type),
       );
   }
