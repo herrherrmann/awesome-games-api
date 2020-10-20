@@ -133,7 +133,7 @@ export class GamesService {
     });
     const games: IGDB_Game[] = response.data;
     console.info(
-      `📥 Requesting from IGDB:`,
+      `📥 Fetched from IGDB:`,
       search ? `"${search}"` : '',
       `=> ${games.length} result(s)`,
     );
