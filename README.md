@@ -16,9 +16,11 @@ $ npm install
 
 ## Running the app
 
+Make sure you have a local `.env` file with all provided values (check `.env.example` for the necessary keys).
+
 ```bash
 # development
-$ export DATABASE_URL=databaseurlhere && export IGDB_API_KEY=keyhere && npm run start
+$ npm run start
 
 # watch mode
 $ npm run start:dev
