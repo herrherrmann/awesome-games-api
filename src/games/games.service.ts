@@ -128,15 +128,24 @@ export class GamesService {
       fields *;
       where category=${MAIN_GAME_CATEGORY};
     `;
-    const response = await this.igdbClient.post('games', searchQuery, {
-      headers: await this.authService.getAuthHeaders(),
-    });
-    const games: IGDB_Game[] = response.data;
-    console.info(
-      `📥 Fetched from IGDB:`,
-      search ? `"${search}"` : '',
-      `=> ${games.length} result(s)`,
-    );
+    let games: IGDB_Game[] = [];
+    try {
+      games = (
+        await this.igdbClient.post('games', searchQuery, {
+          headers: await this.authService.getAuthHeaders(),
+        })
+      ).data;
+      console.info(
+        `📥 Fetched from IGDB:`,
+        search ? `"${search}"` : '',
+        `=> ${games.length} result(s)`,
+      );
+    } catch {
+      console.info(
+        `☠️ Error while fetching from IGDB, returning no results for now.`,
+      );
+      return [];
+    }
     if (search) {
       this.gameCache[search] = games;
     }
