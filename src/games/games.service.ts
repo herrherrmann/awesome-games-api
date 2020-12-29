@@ -198,7 +198,7 @@ export class GamesService {
   async getGamesFromGitHub(): Promise<GitHubGame[]> {
     console.info('🐱 Requesting GitHub README.');
     const readmeUrl =
-      'https://raw.githubusercontent.com/herrherrmann/awesome-multiplayer-games/master/readme.md';
+      'https://raw.githubusercontent.com/herrherrmann/awesome-multiplayer-games/main/readme.md';
     const { data } = await axios.get(readmeUrl);
     const [
       localGamesString,
