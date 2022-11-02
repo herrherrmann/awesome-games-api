@@ -17,6 +17,7 @@ ENV NODE_ENV production
 
 COPY . .
 
+RUN npm install --global typescript
 RUN npm install && npm run build
 FROM debian:bullseye
 
