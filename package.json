@@ -2,6 +2,9 @@
   "name": "awesome-games-api",
   "version": "1.0.0",
   "description": "Backend for the Awesome Multiplayer Games website.",
+  "repository": {
+    "url": "https://github.com/herrherrmann/awesome-games-api"
+  },
   "author": "Sebastian Herrmann",
   "license": "UNLICENSE",
   "scripts": {
