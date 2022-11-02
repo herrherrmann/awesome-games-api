@@ -6,7 +6,7 @@
     "url": "https://github.com/herrherrmann/awesome-games-api"
   },
   "author": "Sebastian Herrmann",
-  "license": "UNLICENSE",
+  "license": "Unlicense",
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "format": "prettier --write \"src/**/*.ts\"",
