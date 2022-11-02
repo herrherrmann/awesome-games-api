@@ -14,10 +14,13 @@ import { EnvironmentVariables } from './interfaces/environmentVariables';
       imports: [ConfigModule],
       useFactory: (configService: ConfigService<EnvironmentVariables>) => ({
         type: 'postgres',
-        url: configService.get('DATABASE_URL'),
+        url: process.env.DATABASE_URL || configService.get('DATABASE_URL'),
+        ssl: false,
         entities: [__dirname + '/**/*.entity{.ts,.js}'],
         synchronize: true,
-        extra: { ssl: true },
+        extra: {
+          ssl: false,
+        },
       }),
       inject: [ConfigService],
     }),
