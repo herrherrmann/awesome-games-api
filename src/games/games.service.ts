@@ -144,10 +144,8 @@ export class GamesService {
         search ? `"${search}"` : '',
         `=> ${games.length} result(s)`,
       );
-    } catch {
-      console.info(
-        `☠️ Error while fetching from IGDB, returning no results for now.`,
-      );
+    } catch (error) {
+      console.info(`☠️ Error while fetching from IGDB: ${error.message}`);
       return [];
     }
     if (search) {
