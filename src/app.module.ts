@@ -12,13 +12,18 @@ import { EnvironmentVariables } from './interfaces/environmentVariables';
     ConfigModule.forRoot(),
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
-      useFactory: (configService: ConfigService<EnvironmentVariables>) => ({
-        type: 'postgres',
-        url: configService.get('DATABASE_URL'),
-        entities: [__dirname + '/**/*.entity{.ts,.js}'],
-        synchronize: true,
-        extra: { ssl: true },
-      }),
+      useFactory: (configService: ConfigService<EnvironmentVariables>) => {
+        const databaseUrl = configService.get('DATABASE_URL');
+        return {
+          type: 'postgres',
+          url: databaseUrl,
+          entities: [__dirname + '/**/*.entity{.ts,.js}'],
+          synchronize: true,
+          extra: {
+            ssl: !databaseUrl.includes('localhost'),
+          },
+        };
+      },
       inject: [ConfigService],
     }),
     AuthModule,

@@ -55,7 +55,11 @@ export class GamesService {
     );
     if (hasUpdated) {
       // Re-fetch from database, because games have changed.
-      return this.getAllGamesInDatabase();
+      const newGamesInDatabase = await this.getAllGamesInDatabase();
+      console.log(
+        `🕹 Serving ${newGamesInDatabase.length} games from the database.`,
+      );
+      return newGamesInDatabase;
     }
     console.log(
       `🕹 Serving ${gamesInDatabase.length} games straight from the database.`,
@@ -140,10 +144,8 @@ export class GamesService {
         search ? `"${search}"` : '',
         `=> ${games.length} result(s)`,
       );
-    } catch {
-      console.info(
-        `☠️ Error while fetching from IGDB, returning no results for now.`,
-      );
+    } catch (error) {
+      console.info(`☠️ Error while fetching from IGDB: ${error.message}`);
       return [];
     }
     if (search) {
@@ -241,6 +243,10 @@ export class GamesService {
     return sortGames(games);
   }
 
+  private async wait(milliSeconds: number) {
+    return new Promise((resolve) => setTimeout(resolve, milliSeconds));
+  }
+
   private async updateGamesInDatabase(
     githubGames: GitHubGame[],
     gamesInDatabase: Game[],
@@ -253,19 +259,20 @@ export class GamesService {
     if (newGames.length) {
       console.info(`✨ ${newGames.length} new games detected.`);
       const genres = await this.getGenresFromIGDB();
-      const promises = newGames.map((game) => this.getGamesFromIGDB(game.name));
-      const igdbResultsPerGame = await Promise.all(promises);
-      const gameWithIGDBResults: {
+      let gameWithIGDBResults: {
         githubGame: GitHubGame;
         igdbGame: IGDB_Game | null;
-      }[] = newGames.map((githubGame: GitHubGame, index: number) => {
-        // TODO: Move this rather into getGamesFromIGDB().
-        const searchResults = igdbResultsPerGame[index];
-        return {
-          githubGame,
-          igdbGame: this.pickBestOrFirstResult(searchResults, githubGame),
-        };
-      });
+      }[] = [];
+      for (const newGame of newGames) {
+        // Wait a bit before each new request to not exceed the IGDB rate limit (4 requests per second).
+        const REQUESTS_PER_SECOND = 4;
+        await this.wait(1_000 / REQUESTS_PER_SECOND);
+        const searchResults = await this.getGamesFromIGDB(newGame.name);
+        gameWithIGDBResults.push({
+          githubGame: newGame,
+          igdbGame: this.pickBestOrFirstResult(searchResults, newGame),
+        });
+      }
       const igdbIds = gameWithIGDBResults
         .filter(({ igdbGame }) => !!igdbGame)
         .map(({ igdbGame }) => igdbGame.id);
