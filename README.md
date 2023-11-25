@@ -1,8 +1,11 @@
 # Awesome Games API
 
-API for the [Awesome Multiplayer Games website](https://multiplayer.page).
+API for the [Awesome Multiplayer Games website](https://multiplayer.page), built with TypeScript and NestJS. Fetches all games and enriches the data with information from [IGDB](https://www.igdb.com/).
 
-**Related:** https://github.com/herrherrmann/awesome-multiplayer-games
+## Related repositories:
+
+- Data source: https://github.com/herrherrmann/awesome-multiplayer-games
+- Frontend: https://github.com/herrherrmann/awesome-games-frontend
 
 # Contribute
 
@@ -10,34 +13,38 @@ If you want to add or edit games, please go to https://github.com/herrherrmann/a
 
 ## Installation
 
-```bash
-$ npm install
-```
+1. Install the Node version defined in `.nvmrc`:
+   ```bash
+   nvm use # or nvm install
+   ```
+2. Install dependencies:
+   ```bash
+   npm install
+   ```
+3. Copy `.env.example` to `.env` and fill in the necessary values.
 
 ## Running the app
 
-Make sure you have a local `.env` file with all provided values (check `.env.example` for the necessary keys).
-
 ```bash
 # development
-$ npm run start
+npm run start
 
 # watch mode
-$ npm run start:dev
+npm run start:dev
 
 # production mode
-$ npm run start:prod
+npm run start:prod
 ```
 
-## Test
+## Tests
 
 ```bash
 # unit tests
-$ npm run test
+npm run test
 
 # e2e tests
-$ npm run test:e2e
+npm run test:e2e
 
 # test coverage
-$ npm run test:cov
+npm run test:cov
 ```
