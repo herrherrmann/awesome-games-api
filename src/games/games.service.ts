@@ -55,7 +55,11 @@ export class GamesService {
     );
     if (hasUpdated) {
       // Re-fetch from database, because games have changed.
-      return this.getAllGamesInDatabase();
+      const newGamesInDatabase = await this.getAllGamesInDatabase();
+      console.log(
+        `🕹 Serving ${newGamesInDatabase.length} games from the database.`,
+      );
+      return newGamesInDatabase;
     }
     console.log(
       `🕹 Serving ${gamesInDatabase.length} games straight from the database.`,
