@@ -16,22 +16,22 @@ type GenresMap = { [genreId: string]: IGDB_Genre['name'] };
 type CoversMap = { [gameId in IGDB_Game['id']]: IGDB_Cover };
 type GamesMap = { [search: string]: IGDB_Game[] };
 
-const GAME_CATEGORIES = {
-  main_game: 0,
-  dlc_addon: 1,
-  expansion: 2,
-  bundle: 3,
-  standalone_expansion: 4,
-  mod: 5,
-  episode: 6,
-  season: 7,
-  remake: 8,
-  remaster: 9,
-  expanded_game: 10,
-  port: 11,
-  fork: 12,
-  pack: 13,
-  update: 14,
+const GAME_TYPES = {
+  'Main Game': 0,
+  Expansion: 2,
+  DLC: 1,
+  Bundle: 3,
+  'Standalone Expansion': 4,
+  Mod: 5,
+  Episode: 6,
+  Season: 7,
+  Remake: 8,
+  Remaster: 9,
+  'Expanded Game': 10,
+  Port: 11,
+  Fork: 12,
+  'Pack / Addon': 13,
+  Update: 14,
 };
 
 const sortGames = sortWith<Game>([
@@ -147,7 +147,7 @@ export class GamesService {
     const searchQuery = `
       ${search ? `search "${search}";` : ''}
       fields *;
-      where category != ${GAME_CATEGORIES.bundle};
+      where game_type != ${GAME_TYPES.Bundle};
     `;
     let games: IGDB_Game[] = [];
     try {

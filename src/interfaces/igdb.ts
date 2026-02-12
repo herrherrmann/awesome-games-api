@@ -1,17 +1,8 @@
-export const IGDB_STATUSES = {
-  0: 'released',
-  2: 'alpha',
-  3: 'beta',
-  4: 'early_access',
-  5: 'offline',
-  6: 'cancelled',
-};
-
 export interface IGDB_Game {
   id: number;
   bundles: number[];
-  category: number;
-  collection: number;
+  game_type: number;
+  collections: number[];
   cover: number;
   created_at: number;
   external_games: number[];
